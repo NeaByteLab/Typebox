@@ -18,20 +18,23 @@ Deno.test('Helpers - defineFn accepts a string input at the limit', () => {
 })
 
 Deno.test(
-  'Helpers - defineFn freezes the object given to the guard but not the caller value',
+  'Helpers - defineFn freezes the original input in place for the guard',
   () => {
     let frozenInsideGuard = false
+    let sameReference = false
     const source = { value: 1 }
     const wrapped = Helpers.defineFn(
       (input: { value: number }) => input,
       (input) => {
         frozenInsideGuard = Object.isFrozen(input)
+        sameReference = input === source
         return true
       }
     )
     wrapped(source)
     assertEquals(frozenInsideGuard, true)
-    assertEquals(Object.isFrozen(source), false)
+    assertEquals(sameReference, true)
+    assertEquals(Object.isFrozen(source), true)
   }
 )
 
@@ -42,6 +45,28 @@ Deno.test('Helpers - defineFn passes the original input to the contract', () => 
     () => true
   )
   assertStrictEquals(wrapped(source), source)
+})
+
+Deno.test('Helpers - defineFn preserves prototype and methods for the guard', () => {
+  class Box {
+    constructor(public value: number) {}
+    double(): number {
+      return this.value * 2
+    }
+  }
+  let isInstance = false
+  let methodResult = 0
+  const wrapped = Helpers.defineFn(
+    (input: Box) => input,
+    (input) => {
+      isInstance = input instanceof Box
+      methodResult = input.double()
+      return true
+    }
+  )
+  wrapped(new Box(21))
+  assertEquals(isInstance, true)
+  assertEquals(methodResult, 42)
 })
 
 Deno.test('Helpers - defineFn rejects a string input longer than the limit', () => {

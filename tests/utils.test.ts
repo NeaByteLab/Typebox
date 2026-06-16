@@ -1,5 +1,25 @@
 import { assertEquals, assertNotStrictEquals, assertStrictEquals, assertThrows } from '@std/assert'
 import Utils from '@app/utils.ts'
+import Globals from '@app/globals.ts'
+
+Deno.test('Utils - deepFreeze allows a string value at the length limit', () => {
+  const atLimit = 'a'.repeat(Globals.maxGuardInputLength)
+  const frozen = Utils.deepFreeze({ token: atLimit })
+  assertEquals(Object.isFrozen(frozen), true)
+  assertEquals(frozen.token.length, Globals.maxGuardInputLength)
+})
+
+Deno.test('Utils - deepFreeze allows nesting at the depth limit', () => {
+  let node: { child?: unknown } = {}
+  const root = node
+  for (let level = 0; level < Globals.maxFreezeDepth - 1; level++) {
+    const next: { child?: unknown } = {}
+    node.child = next
+    node = next
+  }
+  const frozen = Utils.deepFreeze(root)
+  assertEquals(Object.isFrozen(frozen), true)
+})
 
 Deno.test('Utils - deepFreeze handles cyclic references without infinite recursion', () => {
   const root: { self?: unknown } = {}
@@ -52,6 +72,25 @@ Deno.test('Utils - deepFreeze recursively freezes nested objects and arrays', ()
   assertEquals(Object.isFrozen(frozen.list[0]), true)
 })
 
+Deno.test('Utils - deepFreeze rejects an oversized string value nested in an array', () => {
+  const long = 'a'.repeat(Globals.maxGuardInputLength + 1)
+  assertThrows(
+    () => Utils.deepFreeze([{ deep: { value: long } }]),
+    TypeError,
+    `input exceeds ${Globals.maxGuardInputLength} characters`
+  )
+})
+
+Deno.test('Utils - deepFreeze rejects an oversized string value nested in an object', () => {
+  const long = 'a'.repeat(Globals.maxGuardInputLength + 1)
+  const error = assertThrows(
+    () => Utils.deepFreeze({ token: long }),
+    TypeError,
+    `input exceeds ${Globals.maxGuardInputLength} characters`
+  )
+  assertEquals((error as Error).cause, [`input exceeds ${Globals.maxGuardInputLength} characters`])
+})
+
 Deno.test('Utils - deepFreeze returns the same reference for plain objects', () => {
   const target = { a: 1 }
   const frozen = Utils.deepFreeze(target)
@@ -62,6 +101,22 @@ Deno.test('Utils - deepFreeze skips already frozen nodes', () => {
   const target = Object.freeze({ a: 1 })
   const frozen = Utils.deepFreeze(target)
   assertStrictEquals(frozen, target)
+})
+
+Deno.test('Utils - deepFreeze throws a typed reason when nesting is too deep', () => {
+  let node: { child?: unknown } = {}
+  const root = node
+  for (let level = 0; level < Globals.maxFreezeDepth + 5; level++) {
+    const next: { child?: unknown } = {}
+    node.child = next
+    node = next
+  }
+  const error = assertThrows(
+    () => Utils.deepFreeze(root),
+    TypeError,
+    `input nesting exceeds ${Globals.maxFreezeDepth} levels`
+  )
+  assertEquals((error as Error).cause, [`input nesting exceeds ${Globals.maxFreezeDepth} levels`])
 })
 
 Deno.test('Utils - isObject is false for primitives and null', () => {
