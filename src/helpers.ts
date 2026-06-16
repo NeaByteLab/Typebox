@@ -32,7 +32,7 @@ export default class Helpers {
         const reason = `input exceeds ${Globals.maxGuardInputLength} characters`
         throw new TypeError(reason, { cause: [reason] })
       }
-      const guardInput = Utils.isObject(input) ? Utils.deepFreeze(Utils.safeClone(input)) : input
+      const guardInput = Utils.isObject(input) ? Utils.deepFreeze(input) : input
       for (const check of guards) {
         const verdict = check(guardInput)
         if (typeof (verdict as Types.ThenableLike | null)?.then === 'function') {
