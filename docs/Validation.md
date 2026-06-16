@@ -113,7 +113,9 @@ type GuardVerdict = true | string | readonly string[]
 
 ### Behavior Notes
 
-- Each guard receives a deep-frozen structured clone of the input when the input is an object, so a guard can read but cannot mutate it. The caller's value is never frozen or changed.
+- When the input is an object, each guard receives the original input after it is deep-frozen in place, so a guard can read but cannot mutate it. The same reference is frozen and passed to the guard, so the caller's own value is frozen as well. The prototype and methods of the input are preserved. When the input is not an object, the guard receives it unchanged.
 - Guards must be synchronous. Returning a [thenable](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then) throws `TypeError('async guard unsupported')`.
 - A string input longer than 10000 characters is rejected before any guard runs, with the length reason on `cause`.
+- When an object input is frozen for the guard, any nested string value longer than 10000 characters is rejected with a `TypeError`. The message is `input exceeds 10000 characters` and the same reason is on `cause`.
+- When an object input is frozen for the guard, nesting that reaches 256 levels deep is rejected with a `TypeError`. The message is `input nesting exceeds 256 levels` and the same reason is on `cause`.
 - An invalid verdict throws `TypeError('guard returned invalid verdict')` with `cause: ['validation failed']`.
