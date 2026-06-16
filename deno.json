@@ -1,7 +1,7 @@
 {
   "name": "@neabyte/typebox",
   "description": "Contract language for TypeScript where programs are typed contracts",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "license": "MIT",
   "exports": "./src/index.ts",
